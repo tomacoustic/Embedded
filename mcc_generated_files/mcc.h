@@ -53,13 +53,13 @@
 #include "system_types.h"
 #include "reset.h"
 
-#include "uart2.h"
+#include "adc1.h"
 #include "uart1.h"
+#include "uart2.h"
+#include "i2c2.h"
 #include "interrupt_manager.h"
 #include "traps.h"
-#include "i2c2.h"
 #include "watchdog.h"
-#include "adc1.h"
 #include "reset.h"
 #include "spi1.h"
 

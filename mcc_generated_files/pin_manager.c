@@ -95,11 +95,11 @@ void PIN_MANAGER_Initialize (void)
      ***************************************************************************/
     __builtin_write_RPCON(0x0000); // unlock PPS
 
-    RPOR1bits.RP34R = 0x0005;    //RB2->SPI1:SDO1
-    RPINR20bits.SDI1R = 0x0021;    //RB1->SPI1:SDI1
-    RPINR19bits.U2RXR = 0x002B;    //RB11->UART2:U2RX
-    RPOR0bits.RP32R = 0x0006;    //RB0->SPI1:SCK1OUT
     RPINR18bits.U1RXR = 0x002A;    //RB10->UART1:U1RX
+    RPOR1bits.RP34R = 0x0005;    //RB2->SPI1:SDO1
+    RPOR0bits.RP32R = 0x0006;    //RB0->SPI1:SCK1OUT
+    RPINR19bits.U2RXR = 0x002B;    //RB11->UART2:U2RX
+    RPINR20bits.SDI1R = 0x0021;    //RB1->SPI1:SDI1
     RPINR20bits.SCK1R = 0x0020;    //RB0->SPI1:SCK1OUT
 
     __builtin_write_RPCON(0x0800); // lock PPS

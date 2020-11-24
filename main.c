@@ -70,24 +70,36 @@ inline void delay10()
                          Main application
  */
 
-char x = 0;
-char i = 0;
-char j = 0;
-char uart1 = 0;
-char uart2 = 0;
-char ramStat[8] = {0,0,0,0,0,0,0,0};
-char flashStat[8] = {0,0,0,0,0,0,0,0};
-uint16_t ana_read[4] = {0,0,0,0};
+uint8_t x = 0;
+uint8_t i = 0;
+uint8_t j = 0;
+uint8_t uart1 = 0;
+uint8_t uart2 = 0;
+uint8_t ramStat[8] = {0,0,0,0,0,0,0,0};
+uint8_t flashStat[8] = {0,0,0,0,0,0,0,0};
+uint8_t StatCmd[8] = {0x05,0,0,0,0,0,0,0};
+uint16_t ana_read[6] = {0,0,0,0,0,0};
+
+uint8_t ReadStat_CMD = 0x05;
+
+uint16_t temp = 0;
 
 int main(void)
 {
     // initialize the device 
     SYSTEM_Initialize();
     csFlash0_SetHigh();
+    Nop();
+    csFlash0_SetLow();
+    Nop();
+    csFlash0_SetHigh();
     csFlash1_SetHigh();
     csFlash2_SetHigh();
     csRam0_SetHigh();
-    
+    Nop();
+    csRam0_SetLow();
+    Nop();
+    csRam0_SetHigh();
     
     while (1)
     {
@@ -100,17 +112,15 @@ int main(void)
         {
             uart2 = UART2_Read();
         }
+        
         csRam0_SetLow();
-        Nop();
-        ramStat[0] = SPI1_Exchange8bit(0x05);
-        ramStat[1] = SPI1_Exchange8bit(0x00);
-        ramStat[2] = SPI1_Exchange8bit(0x00);
+        SPI1BUFL = 0x0500;
+        temp = SPI1BUFL;
+        
         csRam0_SetHigh();
+        
         csFlash0_SetLow();
-        Nop();
-        flashStat[0] = SPI1_Exchange8bit(0x05);
-        flashStat[1] = SPI1_Exchange8bit(0x00);
-        flashStat[2] = SPI1_Exchange8bit(0x00);
+        SPI1_ExchangeBuffer(StatCmd,2,flashStat);
         csFlash0_SetHigh();
         
         ADC1_SoftwareTriggerEnable();
