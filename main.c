@@ -108,19 +108,21 @@ int main(void)
         {
             uart1 = UART1_Read();
         }
-        if (UART2_IsRxReady())
-        {
-            uart2 = UART2_Read();
-        }
         
         csRam0_SetLow();
+        Nop();
         SPI1BUFL = 0x0500;
-        temp = SPI1BUFL;
-        
+        ramStat[3] = SPI1BUFL;
+        ramStat[0] = SPI1_Exchange8bit(0x05);
+        ramStat[1] = SPI1_Exchange8bit(0x00);
         csRam0_SetHigh();
         
         csFlash0_SetLow();
-        SPI1_ExchangeBuffer(StatCmd,2,flashStat);
+        Nop();
+        SPI1BUFL = 0x0500;
+        flashStat[3] = SPI1BUFL;
+        flashStat[0] = SPI1_Exchange8bit(0x05);
+        flashStat[1] = SPI1_Exchange8bit(0x00);
         csFlash0_SetHigh();
         
         ADC1_SoftwareTriggerEnable();
@@ -134,6 +136,88 @@ int main(void)
         ana_read[3] = ADCBUF3;
         ana_read[4] = ADCBUF4;
         
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
+        delay10();
         
         
         
