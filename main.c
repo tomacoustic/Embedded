@@ -75,12 +75,12 @@ uint8_t i = 0;
 uint8_t j = 0;
 uint8_t uart1 = 0;
 uint8_t uart2 = 0;
-uint8_t ramStat[8] = {0,0,0,0,0,0,0,0};
-uint8_t flashStat[8] = {0,0,0,0,0,0,0,0};
-uint8_t StatCmd[8] = {0x05,0,0,0,0,0,0,0};
+uint16_t ramStat[8] = {0,0,0,0,0,0,0,0};
+uint16_t flashStat[8] = {0,0,0,0,0,0,0,0};
+uint16_t StatCmd[8] = {0x05,0,0,0,0,0,0,0};
 uint16_t ana_read[6] = {0,0,0,0,0,0};
 
-uint8_t ReadStat_CMD = 0x05;
+uint16_t ReadStat_CMD = 0x0005;
 
 uint16_t temp = 0;
 
@@ -88,6 +88,7 @@ int main(void)
 {
     // initialize the device 
     SYSTEM_Initialize();
+    SPI1_Initialize();
     csFlash0_SetHigh();
     Nop();
     csFlash0_SetLow();
@@ -108,23 +109,42 @@ int main(void)
         {
             uart1 = UART1_Read();
         }
-        
+        /*
         csRam0_SetLow();
         Nop();
-        SPI1BUFL = 0x0500;
-        ramStat[3] = SPI1BUFL;
-        ramStat[0] = SPI1_Exchange8bit(0x05);
-        ramStat[1] = SPI1_Exchange8bit(0x00);
+        Nop();
+        Nop();
+        SPI1BUFL = ReadStat_CMD;
+        Nop();
+        SPI1BUFL = 0x0F0F;
+        while (SPI1STATLbits.SPIBUSY == 1)
+        {
+            Nop();
+        }
+        ramStat[0] = SPI1BUFL;
+        Nop();
+        ramStat[1] = SPI1BUFL;
         csRam0_SetHigh();
         
         csFlash0_SetLow();
         Nop();
-        SPI1BUFL = 0x0500;
-        flashStat[3] = SPI1BUFL;
-        flashStat[0] = SPI1_Exchange8bit(0x05);
-        flashStat[1] = SPI1_Exchange8bit(0x00);
+        Nop();
+        Nop();
+        Nop();
+        SPI1BUFL = ReadStat_CMD;
+        Nop();
+        SPI1BUFL = 0xF0F0;
+        while (SPI1STATLbits.SPIBUSY == 1)
+        {
+            Nop();
+        }
+        flashStat[0] = SPI1BUFL;
+        Nop();
+        flashStat[1] = SPI1BUFL;
         csFlash0_SetHigh();
         
+         * 
+         * */
         ADC1_SoftwareTriggerEnable();
         while (!(ADSTATLbits.AN0RDY & ADSTATLbits.AN1RDY & ADSTATLbits.AN9RDY & ADSTATLbits.AN3RDY & ADSTATLbits.AN4RDY))
         {
@@ -136,91 +156,21 @@ int main(void)
         ana_read[3] = ADCBUF3;
         ana_read[4] = ADCBUF4;
         
+        printf(ana_read[0]);
+        printf(" | ");
         delay10();
+        printf(ana_read[1]);
+        printf(" | ");
         delay10();
+        printf(ana_read[2]);
+        printf(" | ");
         delay10();
+        printf(ana_read[3]);
+        printf(" | ");
         delay10();
+        printf(ana_read[4]);
+        printf("\r\n");
         delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        delay10();
-        
-        
-        
     }
     return 1; 
 }
