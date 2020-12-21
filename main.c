@@ -54,10 +54,12 @@
 #include "mcc_generated_files/tmr1.h"
 
 #include <math.h>
+#include <string.h>
 
 /*
                          Main application
  */
+
 
 #define PWM_FREQ 48000;
 
@@ -86,7 +88,7 @@ uint16_t ReadStat_CMD = 0x0005;
 uint16_t temp = 0;
 
 #define buffMax 0x780
-uint16_t  __attribute__((space(ymemory), aligned(32))) buffer[2][buffMax];
+uint16_t  /*__attribute__((space(ymemory), aligned(32)))*/ buffer[2][buffMax];
 uint16_t bufptr = 0;
 
 #define SINROM_SIZE 0x1000
@@ -95,6 +97,51 @@ int16_t  __attribute__((space(auto_psv))) sinROM[SINROM_SIZE] = {32767,32767,327
 float phase = 0;
 float frq_curr = 0;
 int16_t outlevel = 0;
+
+#define CMD_BUFFER_LEN 64
+char cmd_buffer[CMD_BUFFER_LEN];
+
+inline void cmd_buffer_clr()
+{
+    char tmp_clr[CMD_BUFFER_LEN] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                                0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    memcpy(cmd_buffer,tmp_clr,CMD_BUFFER_LEN);
+}
+
+inline void cmd_buffer_append(char in)
+{
+    char tmp_append[2] = {0,0};
+    tmp_append[0] = in;
+    strcat(cmd_buffer,tmp_append);
+}
+
+uint8_t charHex2num(char in, uint8_t place)
+{
+    uint8_t local = 0;
+    if ((in >= 0x30) & (in <= 0x39))
+    {
+        local += (in - 0x30);
+    }
+    else if ((in >= 0x41) & (in <= 0x46))
+    {
+        local += (in - 0x37);
+    }
+    else if ((in >= 0x61) & (in <= 0x66))
+    {
+        local += (in - 0x57);
+    }
+    return (local * place);
+}
+
+inline uint16_t charDec2num(char in, uint8_t place)
+{
+    uint8_t local = 0;
+    if ((in >= 0x30) & (in <= 0x39))
+    {
+        local += (in - 0x30);
+    }
+    return (local * place);
+}
         
 inline void delay10()
 {
@@ -108,14 +155,93 @@ inline void delay10()
     Nop();
     Nop();
     Nop();
+    return;
+}
+
+inline void saveDevID(char in)
+{
+    char x = 0;
+    x = x + 1;
+    return;
+    //Dummy Function
+}
+
+inline uint8_t getDevID()
+{
+    //dummy function, until memory working;
+    return 0xFF;
+}
+
+void CMD_Handler(char in)
+{
+    uint8_t addrd = 0;
+    if (in == '\r')
+    {
+        //DO Stuff
+        if ((cmd_buffer[0] == 'D') & (cmd_buffer[1] == '0') & (cmd_buffer[4] == ':'))
+        {
+            addrd = charHex2num(cmd_buffer[2],0x10) + charHex2num(cmd_buffer[3],0x01);
+            if (addrd == dev_ID)
+            {
+                if ((cmd_buffer[5] == 'U') & (cmd_buffer[6] == 'O') & (cmd_buffer[7] == 'K') & (cmd_buffer[8] == '?'))
+                {
+                    printf("+1");
+                }
+                else if ((cmd_buffer[5] == 'A') & (cmd_buffer[6] == 'D') & (cmd_buffer[7] == 'D') & (cmd_buffer[8] == 'R') & (cmd_buffer[9] == '=') & (cmd_buffer[10] == '0'))
+                {
+                    dev_ID = charHex2num(cmd_buffer[11],0x10) + charHex2num(cmd_buffer[12],0x01);
+                    saveDevID(dev_ID);
+                    printf("+1");
+                }
+            }
+        }
+                               
+        
+        cmd_buffer_clr();
+    }
+    else if (in == '\t')
+    {
+        
+    }
+    else if ((in > 0x20) & (in < 0x7E))
+    {
+        cmd_buffer_append(in);
+    }
+    
+    return;
+}
+
+inline uint16_t step_gen()
+{
+    float step_phase;
+    float lookup_phase;
+    float sinrom_size_f = (float)SINROM_SIZE;
+    float sinrom_size_2_f = sinrom_size_f * 2.0;
+    const float multiplier = (float)SINROM_SIZE * 2.0f / PWM_FREQ;
+    
+    step_phase = multiplier * frq_curr;
+    phase = phase + step_phase;
+    
+    if (phase >= (sinrom_size_2_f))
+    {
+        phase = phase - sinrom_size_2_f;
+    }
+    if (phase >= sinrom_size_f) 
+    {
+        lookup_phase = (sinrom_size_2_f) + 1.0f - phase;
+    }
+    else
+    {
+        lookup_phase = phase;
+    }
+
+    outlevel = (uint16_t)((float)sinROM[(int)floor(lookup_phase)] +  32767.0f);
+    return outlevel;
 }
 
 
 void base_tick(void)
 {
-    float step_phase;
-    float lookup_phase;
-    
     y++;
     
     if (state == STATE_LOG)
@@ -134,28 +260,16 @@ void base_tick(void)
             bufptr++;
             buffer[0][bufptr] = ADCBUF9;
             bufptr++;
-            buffer[0][bufptr] = outlevel;
+            buffer[0][bufptr] = PG1DC;
             bufptr++;
         }
     }
     if ((state == STATE_GL) | (state == STATE_GEN))
     {
-        step_phase = frq_curr /(float)PWM_FREQ;
-        step_phase = step_phase * 2.0 * (float)SINROM_SIZE;
-        phase = phase + step_phase;
-        if (phase >= ((float)SINROM_SIZE * 2.0))
-        {
-            phase = phase - (float)SINROM_SIZE;
-        }
-        if (phase >= (float)SINROM_SIZE)
-        {
-            lookup_phase = (float)SINROM_SIZE - (phase - (float)SINROM_SIZE);
-        }
-        else
-        {
-            lookup_phase = phase;
-        }
-        outlevel = floor(lookup_phase);
+        //Put PWM Function here
+        PWM_DutyCycleSet(PWM_GENERATOR_1, (uint16_t)(outlevel + 32767));
+        PWM_MasterDutyCycleSet((uint16_t)(outlevel + 32767));
+
     }
     else
     {
@@ -165,12 +279,24 @@ void base_tick(void)
     ana_read[0] = ADCBUF0;
     ana_read[1] = ADCBUF1;
     ana_read[2] = ADCBUF9;
+    ana_read[3] = ADCBUF3;
+    ana_read[4] = ADCBUF4;
     ADC1_SoftwareTriggerEnable();
     return;
 }
 
+
+
 int main(void)
 {
+    uint16_t i = 0;
+    phase = ((float)SINROM_SIZE * 2.0f) - 5.0f;
+    frq_curr = 4800.0f;
+    for (i = 0; i < buffMax; i++)
+    {
+        buffer[0][i] = step_gen();
+    }
+    
     // initialize the device 
     SYSTEM_Initialize();
 
@@ -179,25 +305,19 @@ int main(void)
     PWM_SetGenerator1InterruptHandler(base_tick);
     //sp0_SetInterruptHandler(base_tick);
     
-    TMR1_Start();
+    dev_ID = getDevID();
     
+    TMR1_Start();
+    state = STATE_GEN;
+    frq_curr = 4800.0;
+    PWM_Enable();
     while (1)
     {
         x++;
         
         if (UART1_IsRxReady())
         {
-            uart1 = UART1_Read();
-            if (uart1 == 'X')
-            {
-                bufptr = 0;
-                state = STATE_LOG;
-            }
-            if (uart1 == 'Y')
-            {
-                bufptr = 0;
-                state = STATE_TEST;
-            }
+            CMD_Handler(UART1_Read());
         }
         
         if (state == STATE_SEND)
@@ -240,7 +360,4 @@ int main(void)
     }
     return 1; 
 }
-/**1
- End of File
-*/
 
