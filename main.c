@@ -74,20 +74,25 @@ uint8_t state = 0;
 uint8_t dev_ID = 0xFF;
 #define DEV_ID_Master 0x00;
 
+/*
 uint16_t ramStat[8] = {0,0,0,0,0,0,0,0};
 uint16_t flashStat[8] = {0,0,0,0,0,0,0,0};
 uint16_t StatCmd[8] = {0x05,0,0,0,0,0,0,0};
-uint16_t ana_read[6] = {0,0,0,0,0,0};
+
 uint16_t ReadStat_CMD = 0x0005;
 uint16_t temp = 0;
+*/
+
+uint16_t ana_read[6] = {0,0,0,0,0,0};
 
 #define BUFFMAX 0x780 // Based on page size of Winbond memory chip.
-#define BUFFCOUNT 4
+#define BUFFCOUNT 3
 uint16_t buffer[BUFFCOUNT][BUFFMAX];
-uint16_t bufptr = 0;
+uint16_t bufptr_write = 0;
+uint16_t bufptr_read = 0;
 uint8_t bufwrite = 0;
 uint8_t bufread = 0;
-uint16_t buffStat[BUFFCOUNT];
+uint8_t buffStat[BUFFCOUNT];
 #define BUFFSTAT_READY 0
 #define BUFFSTAT_FILLING 1
 #define BUFFSTAT_FULL 2
@@ -109,17 +114,16 @@ float sinrom_size_2_f;
 float multiplier;
 
 //Test Data
+#define TESTPLANMAXLEN 1024
 struct TestPlan {
     uint8_t len_pages;
     uint8_t curr_phase;
-    int16_t freq[256];
-    int16_t ampl[256];
+    int16_t freq[TESTPLANMAXLEN];
+    int32_t freq_step;
+    int16_t ampl[TESTPLANMAXLEN];
+    int32_t ampl_step;
 } Test;
 
-struct CurrTargets {
-    int16_t freq;
-    int16_t ampl;
-} tempTgt;
 
 inline void cmd_buffer_clr()
 {
@@ -137,7 +141,7 @@ inline void cmd_buffer_append(char in)
     strcat(cmd_buffer,tmp_append);
 }
 
-uint8_t charHex2num(char in, uint8_t place)
+inline uint8_t charHex2num(char in, uint8_t place)
 {
     uint8_t local = 0;
     if ((in >= 0x30) & (in <= 0x39))
@@ -194,7 +198,7 @@ inline uint8_t getDevID()
     return 0xFF;
 }
 
-void CMD_Handler(char in)
+inline void CMD_Handler(char in)
 {
     uint8_t addrd = 0;
     uint8_t tpnt = 0;
@@ -210,11 +214,30 @@ void CMD_Handler(char in)
                 {
                     printf("+1");
                 }
+                else if ((cmd_buffer[5] == 'S') & (cmd_buffer[6] == 'T') & (cmd_buffer[7] == 'B') & (cmd_buffer[8] == 'Y') & (cmd_buffer[9] == '!'))
+                {
+                    state = STATE_LOG;
+                    printf("+1");
+                }
+                else if ((cmd_buffer[5] == 'T') & (cmd_buffer[6] == 'E') & (cmd_buffer[7] == 'S') & (cmd_buffer[7] == 'T') & (cmd_buffer[9] == '!'))
+                {
+                    state = STATE_GEN;
+                    printf("+1");
+                }
                 else if ((cmd_buffer[5] == 'A') & (cmd_buffer[6] == 'D') & (cmd_buffer[7] == 'D') & (cmd_buffer[8] == 'R') & (cmd_buffer[9] == '=') & (cmd_buffer[10] == '0'))
                 {
                     dev_ID = charHex2num(cmd_buffer[11],0x10) + charHex2num(cmd_buffer[12],0x01);
                     saveDevID(dev_ID);
                     printf("+1");
+                }
+                else if ((cmd_buffer[5] == 'A') & (cmd_buffer[6] == 'N') & (cmd_buffer[9] == '?'))
+                {
+                    tpnt = charHex2num(cmd_buffer[7],0x10) + charHex2num(cmd_buffer[8],0x01);
+                    if (tpnt > 4)
+                    {
+                        tpnt = 0;
+                    }
+                    printf("%u",ana_read[tpnt]);
                 }
                 else if ((cmd_buffer[5] == 'T') & (cmd_buffer[6] == 'L') & (cmd_buffer[7] == 'E') & (cmd_buffer[8] == 'N') & (cmd_buffer[9] == '=') & (cmd_buffer[10] == '0'))
                 {
@@ -263,8 +286,54 @@ void CMD_Handler(char in)
     {
         cmd_buffer_append(in);
     }
-    
     return;
+}
+
+inline int32_t CalcIntervalSize(int16_t val1, int16_t val2)
+{
+    int32_t workingA, workingB, workingC;
+    
+    workingA = (int32_t)val1 * 0x00010000L;
+    workingB = (int32_t)val2 * 0x00010000L;
+    workingC = (int32_t)BUFFMAX;
+    workingA = workingB - workingA;
+    workingA = workingA / workingC;
+    return workingA;
+}
+
+inline void test_init()
+{
+    uint16_t i;
+    Test.curr_phase = 0;
+    bufptr_write = 0;
+    bufptr_read = 0;
+    bufread = 0;
+    bufwrite = 0;
+    buffStat[i] = BUFFSTAT_FILLING;
+    for (i = 1; i > BUFFCOUNT; i++)
+    {
+        buffStat[i] = BUFFSTAT_READY;
+    }
+    Test.ampl_step = CalcIntervalSize(Test.ampl[0],Test.ampl[1]);
+    Test.freq_step = CalcIntervalSize(Test.freq[0],Test.freq[1]);
+    return;
+}
+
+inline void test_step()
+{
+    uint16_t i;
+    i = Test.curr_phase;
+    Test.curr_phase = Test.curr_phase + 1;
+    bufptr_write = 0;
+    buffStat[bufwrite] = BUFFSTAT_FULL;
+    bufwrite = bufwrite + 1;
+    if (bufwrite > BUFFCOUNT)
+    {
+        bufwrite = 0;
+    }
+    buffStat[bufwrite] = BUFFSTAT_FILLING;
+    Test.ampl_step = CalcIntervalSize(Test.ampl[i],Test.ampl[Test.curr_phase]);
+    Test.freq_step = CalcIntervalSize(Test.freq[i],Test.freq[Test.curr_phase]);
 }
 
 inline uint16_t step_gen()
@@ -272,9 +341,7 @@ inline uint16_t step_gen()
     float step_phase;
     float lookup_phase;
     int32_t workingLong = 0;
- 
-    csFlash0_SetHigh();
-    
+
     step_phase = multiplier * frq_curr;
     phase = phase + step_phase;
     
@@ -300,37 +367,55 @@ inline uint16_t step_gen()
 
 inline void ProgStep()
 {
-    
+    int32_t workingLong;
+    if (bufptr_write == 0)
+    {
+        frq_curr = Test.freq[Test.curr_phase];
+        amp_curr = Test.ampl[Test.curr_phase];
+    }
+    else if (bufptr_write == (BUFFMAX - 1))
+    {
+        frq_curr = Test.freq[Test.curr_phase + 1];
+        amp_curr = Test.ampl[Test.curr_phase + 1];
+    }
+    else
+    {
+        workingLong = (int32_t)bufptr_write * Test.freq_step;
+        workingLong = workingLong & 0xFFFF0000l;
+        workingLong = workingLong / 0x00010000l;
+        frq_curr = Test.freq[Test.curr_phase] + workingLong;
+        
+        workingLong = (int32_t)bufptr_write * Test.ampl_step;
+        workingLong = workingLong & 0xFFFF0000l;
+        workingLong = workingLong / 0x00010000l;
+        amp_curr = Test.ampl[Test.curr_phase] + workingLong;
+    }
+    return;
 }
-
-
 
 void base_tick(void)
 {
-    if (state == STATE_LOG )//| state == STATE_GEN)
+    if ((state == STATE_LOG) | (state == STATE_GEN))
     {
-        if (bufptr >= BUFFMAX)
+        if (bufptr_write >= (BUFFMAX - 1))
         {
-            bufptr = 0;
+            ProgStep();
         }
-        else
-        {
-            //TODO Add switch for writing buffer
-            buffer[0][bufptr] = ADCBUF0;
-            bufptr++;
-            buffer[0][bufptr] = ADCBUF1;
-            bufptr++;
-            buffer[0][bufptr] = ADCBUF9;
-            bufptr++;
-            buffer[0][bufptr] = PG1DC;
-            bufptr++;
-        }
+
+        buffer[bufwrite][bufptr_write] = ADCBUF0;
+        bufptr_write++;
+        buffer[bufwrite][bufptr_write] = ADCBUF1;
+        bufptr_write++;
+        buffer[bufwrite][bufptr_write] = ADCBUF9;
+        bufptr_write++;
+        buffer[bufwrite][bufptr_write] = PG1DC;
+        bufptr_write++;
     }
     
     if (state == STATE_GEN)
     {
         PWM_Enable();
-        //Put PWM Function here
+        ProgStep();
         PG1DC = step_gen();
         MDC = 0;
     }
@@ -352,11 +437,15 @@ void base_tick(void)
     return;
 }
 
-
-
 int main(void)
 {
     uint8_t i_8 = 0; //Local use variable
+    uint16_t i_16 = 0;
+    uint32_t i_32 = 0;
+    int8_t j_8 = 0;
+    int16_t j_16 = 0;
+    int32_t j_32 = 0;
+    
     
     sinrom_size_f = (float)SINROM_SIZE; //Useful in calcs. Calc once.
     sinrom_size_2_f = sinrom_size_f * 2.0; //Useful in calcs. Calc once.
@@ -368,18 +457,32 @@ int main(void)
         buffStat[i_8] = BUFFSTAT_READY;
     }
     
+    //Test SW HERE
+    //TODO: Remove this before real operation
+    Test.len_pages = BUFFCOUNT;
+    
+    Test.ampl[0] = 32700;
+    Test.ampl[1] = 0;
+    Test.ampl[2] = 0x28;
+    Test.ampl[3] = 32700;
+    
+    Test.freq[0] = 100;
+    Test.ampl[1] = 200;
+    Test.ampl[2] = 9000;
+    Test.ampl[2] = 9000;
+
     // initialize the device 
     SYSTEM_Initialize();
         
     ADC1_SoftwareTriggerEnable();
     
     PWM_SetGenerator1InterruptHandler(base_tick);
-    //sp0_SetInterruptHandler(base_tick);
+    sp0_SetInterruptHandler(base_tick);
     
     dev_ID = getDevID();
     
     TMR1_Start();
-    PWM_Enable();
+    
     while (1)
     {
         if (UART1_IsRxReady())
@@ -389,7 +492,7 @@ int main(void)
         
         if (state == STATE_SEND)
         {
-            if (bufptr == 0)
+            if (bufptr_write == 0)
             {
                 printf("\033[2J");
                 while (!U1STAHbits.UTXBE)
@@ -398,12 +501,12 @@ int main(void)
                 }
             }
             
-            printf("%u",buffer[0][bufptr]);
+            printf("%u",buffer[0][bufptr_write]);
             while (!U1STAHbits.UTXBE)
             {
 
             }
-            printf(",%u",bufptr);
+            printf(",%u",bufptr_write);
             while (!U1STAHbits.UTXBE)
             {
 
@@ -413,11 +516,11 @@ int main(void)
             {
 
             }
-            bufptr++;
-            if (bufptr >= BUFFMAX)
+            bufptr_write++;
+            if (bufptr_write >= BUFFMAX)
             {
                 state = STATE_IDLE;
-                bufptr = 0;
+                bufptr_write = 0;
             }
         }
         if (state == STATE_TEST)
