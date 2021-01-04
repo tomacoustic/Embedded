@@ -35,4 +35,4 @@ MP_AS_DIR="D:\Program Files\Microchip\xc16\v1.60\bin"
 MP_LD_DIR="D:\Program Files\Microchip\xc16\v1.60\bin"
 MP_AR_DIR="D:\Program Files\Microchip\xc16\v1.60\bin"
 # MP_BC_DIR is not defined
-DFP_DIR=D:/Program Files (x86)/Microchip/MPLABX/v5.40/packs/Microchip/dsPIC33CK-MP_DFP/1.4.102
+DFP_DIR=C:/Users/thoma/.mchp_packs/Microchip/dsPIC33CK-MP_DFP/1.5.135

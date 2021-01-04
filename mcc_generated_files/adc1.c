@@ -75,8 +75,8 @@ void ADC1_Initialize (void)
     ADCON2H = 0xF8;
     // SWCTRG disabled; SHRSAMP disabled; SUSPEND disabled; SWLCTRG disabled; SUSPCIE disabled; CNVCHSEL AN0; REFSEL disabled; 
     ADCON3L = 0x00;
-    // SHREN enabled; C1EN enabled; C0EN enabled; CLKDIV 1; CLKSEL FOSC/2; 
-    ADCON3H = (0x83 & 0xFF00); //Disabling C0EN, C1EN, C2EN, C3EN and SHREN bits
+    // SHREN enabled; C1EN enabled; C0EN enabled; CLKDIV 2; CLKSEL FOSC; 
+    ADCON3H = (0x4183 & 0xFF00); //Disabling C0EN, C1EN, C2EN, C3EN and SHREN bits
     // SAMC0EN disabled; SAMC1EN disabled; 
     ADCON4L = 0x00;
     // C0CHS AN0; C1CHS ANA1; 
@@ -180,10 +180,10 @@ void ADC1_Initialize (void)
 
     //TRGSRC0 Common Software Trigger; TRGSRC1 Common Software Trigger; 
     ADTRIG0L = 0x101;
-    //TRGSRC3 Common Software Trigger; TRGSRC2 None; 
-    ADTRIG0H = 0x100;
-    //TRGSRC4 Common Software Trigger; TRGSRC5 None; 
-    ADTRIG1L = 0x01;
+    //TRGSRC3 None; TRGSRC2 None; 
+    ADTRIG0H = 0x00;
+    //TRGSRC4 None; TRGSRC5 None; 
+    ADTRIG1L = 0x00;
     //TRGSRC6 None; TRGSRC7 None; 
     ADTRIG1H = 0x00;
     //TRGSRC8 None; TRGSRC9 Common Software Trigger; 

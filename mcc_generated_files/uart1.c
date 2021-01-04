@@ -61,8 +61,8 @@ void UART1_Initialize(void)
     // URXEN disabled; RXBIMD RXBKIF flag when Break makes low-to-high transition after being low for at least 23/11 bit periods; UARTEN enabled; MOD Asynchronous 8-bit UART; UTXBRK disabled; BRKOVR TX line driven by shifter; UTXEN disabled; USIDL disabled; WAKE disabled; ABAUD disabled; BRGH enabled; 
     // Data Bits = 8; Parity = None; Stop Bits = 1 Stop bit sent, 1 checked at RX;
     U1MODE = (0x8080 & ~(1<<15));  // disabling UARTEN bit
-    // STSEL 1 Stop bit sent, 1 checked at RX; BCLKMOD disabled; SLPEN disabled; FLO Off; BCLKSEL FOSC/2; C0EN disabled; RUNOVF disabled; UTXINV disabled; URXINV disabled; HALFDPLX disabled; 
-    U1MODEH = 0x00;
+    // STSEL 1 Stop bit sent, 1 checked at RX; BCLKMOD disabled; SLPEN disabled; FLO Off; BCLKSEL FOSC/2; C0EN disabled; RUNOVF disabled; UTXINV disabled; URXINV disabled; HALFDPLX enabled; 
+    U1MODEH = 0x100;
     // OERIE disabled; RXBKIF disabled; RXBKIE disabled; ABDOVF disabled; OERR disabled; TXCIE disabled; TXCIF disabled; FERIE disabled; TXMTIE disabled; ABDOVE disabled; CERIE disabled; CERIF disabled; PERIE disabled; 
     U1STA = 0x00;
     // URXISEL RX_ONE_WORD; UTXBE enabled; UTXISEL TX_BUF_EMPTY; URXBE enabled; STPMD disabled; TXWRE disabled; 
@@ -135,6 +135,16 @@ bool UART1_IsTxDone(void)
     return U1STAbits.TRMT;
 }
 
+int __attribute__((__section__(".libc.write"))) write(int handle, void *buffer, unsigned int len) 
+{
+    unsigned int i;
+
+    for (i = len; i; --i)
+    {
+        UART1_Write(*(char*)buffer++);
+    }
+    return(len);
+}
 
 /*******************************************************************************
 

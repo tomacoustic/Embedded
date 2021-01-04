@@ -54,6 +54,11 @@
 #include "pin_manager.h"
 
 /**
+ Section: File specific functions
+*/
+void (*sp0_InterruptHandler)(void) = NULL;
+
+/**
  Section: Driver Interface Function Definitions
 */
 void PIN_MANAGER_Initialize (void)
@@ -62,21 +67,21 @@ void PIN_MANAGER_Initialize (void)
      * Setting the Output Latch SFR(s)
      ***************************************************************************/
     LATA = 0x0000;
-    LATB = 0x001C;
+    LATB = 0x189C;
 
     /****************************************************************************
      * Setting the GPIO Direction SFR(s)
      ***************************************************************************/
     TRISA = 0x001F;
-    TRISB = 0xEF63;
+    TRISB = 0x2763;
 
     /****************************************************************************
      * Setting the Weak Pull Up and Weak Pull Down SFR(s)
      ***************************************************************************/
     CNPDA = 0x0000;
-    CNPDB = 0x0000;
+    CNPDB = 0x2000;
     CNPUA = 0x0000;
-    CNPUB = 0xE060;
+    CNPUB = 0x0060;
 
     /****************************************************************************
      * Setting the Open Drain SFR(s)
@@ -95,12 +100,75 @@ void PIN_MANAGER_Initialize (void)
      ***************************************************************************/
     __builtin_write_RPCON(0x0000); // unlock PPS
 
+    RPINR20bits.SCK1R = 0x0020;    //RB0->SPI1:SCK1OUT
     RPOR1bits.RP34R = 0x0005;    //RB2->SPI1:SDO1
+    RPOR5bits.RP43R = 0x0001;    //RB11->UART1:U1TX
     RPINR18bits.U1RXR = 0x002A;    //RB10->UART1:U1RX
     RPINR20bits.SDI1R = 0x0021;    //RB1->SPI1:SDI1
-    RPINR20bits.SCK1R = 0x0020;    //RB0->SPI1:SCK1OUT
     RPOR0bits.RP32R = 0x0006;    //RB0->SPI1:SCK1OUT
 
     __builtin_write_RPCON(0x0800); // lock PPS
+    
+    /****************************************************************************
+     * Interrupt On Change: positive
+     ***************************************************************************/
+    CNEN0Bbits.CNEN0B13 = 1;    //Pin : RB13
+    /****************************************************************************
+     * Interrupt On Change: flag
+     ***************************************************************************/
+    CNFBbits.CNFB13 = 0;    //Pin : RB13
+    /****************************************************************************
+     * Interrupt On Change: config
+     ***************************************************************************/
+    CNCONBbits.CNSTYLE = 1;    //Config for PORTB
+    CNCONBbits.ON = 1;    //Config for PORTB
+    
+    /* Initialize IOC Interrupt Handler*/
+    sp0_SetInterruptHandler(&sp0_CallBack);
+    
+    /****************************************************************************
+     * Interrupt On Change: Interrupt Enable
+     ***************************************************************************/
+    IFS0bits.CNBIF = 0; //Clear CNBI interrupt flag
+    IEC0bits.CNBIE = 1; //Enable CNBI interrupt
+}
+
+void __attribute__ ((weak)) sp0_CallBack(void)
+{
+
+}
+
+void sp0_SetInterruptHandler(void (* InterruptHandler)(void))
+{ 
+    IEC0bits.CNBIE = 0; //Disable CNBI interrupt
+    sp0_InterruptHandler = InterruptHandler; 
+    IEC0bits.CNBIE = 1; //Enable CNBI interrupt
+}
+
+void sp0_SetIOCInterruptHandler(void *handler)
+{ 
+    sp0_SetInterruptHandler(handler);
+}
+
+/* Interrupt service routine for the CNBI interrupt. */
+void __attribute__ (( interrupt, no_auto_psv, context )) _CNBInterrupt ( void )
+{
+    if(IFS0bits.CNBIF == 1)
+    {
+        if(CNFBbits.CNFB13 == 1)
+        {
+            if(sp0_InterruptHandler) 
+            { 
+                sp0_InterruptHandler(); 
+            }
+            
+            CNFBbits.CNFB13 = 0;  //Clear flag for Pin - RB13
+
+        }
+        
+        
+        // Clear the flag
+        IFS0bits.CNBIF = 0;
+    }
 }
 

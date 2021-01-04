@@ -56,12 +56,12 @@ void CLOCK_Initialize(void)
     OSCTUN = 0x00;
     // POST1DIV 1:3; VCODIV FVCO/4; POST2DIV 1:1; 
     PLLDIV = 0x31;
-    // APLLEN disabled; FRCSEL FRC; APLLPRE 1:1; 
-    ACLKCON1 = 0x101;
+    // APLLEN enabled; FRCSEL FRC; APLLPRE 1:1; 
+    ACLKCON1 = 0x8101;
     // APLLFBDIV 150; 
     APLLFBD1 = 0x96;
-    // APOST1DIV 1:4; APOST2DIV 1:1; AVCODIV FVCO/4; 
-    APLLDIV1 = 0x41;
+    // APOST1DIV 1:6; APOST2DIV 1:5; AVCODIV FVCO/4; 
+    APLLDIV1 = 0x65;
     // ROEN disabled; ROSWEN disabled; ROSLP disabled; ROSEL FOSC; ROOUT disabled; ROSIDL disabled; 
     REFOCONL = 0x00;
     // RODIV 0; 
